@@ -1,40 +1,112 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Fox Coin Chase</title>
+<title>Die drei ??? Kids – Geheimnis-Memory</title>
 <style>
-  *{box-sizing:border-box}
-  html,body{margin:0;height:100%;overflow:hidden;background:#87ceeb}
-  body{display:grid;place-items:center;font-family:Arial,sans-serif}
-  canvas{display:block;background:linear-gradient(#87ceeb 0 68%,#72b84a 68%);max-width:100vw;max-height:100vh}
-  #ui{position:fixed;top:12px;left:12px;background:#fff;padding:8px 12px;border-radius:10px;font-weight:bold}
-  #start{position:fixed;inset:0;display:grid;place-items:center;background:#0006;color:white}
-  #start div{text-align:center}
-  button{padding:12px 24px;border:0;border-radius:10px;font-size:18px;font-weight:bold;cursor:pointer}
+*{box-sizing:border-box}
+body{margin:0;background:#182536;color:#fff;font-family:Arial,sans-serif;text-align:center}
+h1{margin:20px 10px 5px;font-size:28px}
+p{margin:5px 10px 18px;color:#cbd5e1}
+#game{width:min(92vw,620px);margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.card{aspect-ratio:1;border:0;border-radius:12px;background:#d9a62e;cursor:pointer;font-size:38px;box-shadow:0 4px 0 #98731e}
+.card.flipped,.card.matched{background:#fff}
+.card.matched{box-shadow:0 4px 0 #4f7d52}
+#status{margin:18px;font-weight:bold}
+button#restart{padding:10px 18px;border:0;border-radius:8px;font-weight:bold;cursor:pointer}
 </style>
 </head>
 <body>
-<canvas id="game" width="800" height="450"></canvas>
-<div id="ui">Coins: <span id="score">0</span></div>
-<div id="start">
-  <div>
-    <h1>🦊 Fox Coin Chase</h1>
-    <p>Fox runs forward automatically. Press SPACE at the right moment to jump and catch the coins!</p>
-    <button id="play">START</button>
-  </div>
-</div>
+
+<h1>🔎 Die drei ??? Kids</h1>
+<p>Geheimnis-Memory</p>
+<div id="status">Züge: 0</div>
+<div id="game"></div>
+<button id="restart">Neues Spiel</button>
 
 <script>
-const c=document.querySelector("canvas"),x=c.getContext("2d");
-const scoreEl=document.querySelector("#score"), start=document.querySelector("#start");
-const keys={};
-let playing=false,score=0,best=Number(localStorage.getItem("foxBest")||0);
-let distance=0, speed=5, combo=0, comboTimer=0, coins=[], obstacles=[], particles=[], clouds=[];
-let shake=0, jumpHeld=false;
+const symbols=["🔎","🔎","🔦","🔦","🗝️","🗝️","🧭","🧭","🕵️","🕵️","📜","📜"];
+let cards=[];
+let first=null;
+let second=null;
+let locked=false;
+let moves=0;
 
-const fox={x:150,y:0,size:28,vy:0,onGround:true,coyote:0};
+const game=document.getElementById("game");
+const status=document.getElementById("status");
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+}
+
+function start(){
+  cards=[...symbols];
+  shuffle(cards);
+  first=null;
+  second=null;
+  locked=false;
+  moves=0;
+  status.textContent="Züge: 0";
+  game.innerHTML="";
+
+  cards.forEach((symbol,i)=>{
+    const button=document.createElement("button");
+    button.className="card";
+    button.textContent="❓";
+    button.dataset.symbol=symbol;
+    button.onclick=()=>flip(button);
+    game.appendChild(button);
+  });
+}
+
+function flip(card){
+  if(locked||card.classList.contains("flipped")||card.classList.contains("matched"))return;
+
+  card.classList.add("flipped");
+  card.textContent=card.dataset.symbol;
+
+  if(!first){
+    first=card;
+    return;
+  }
+
+  second=card;
+  moves++;
+  status.textContent="Züge: "+moves;
+
+  if(first.dataset.symbol===second.dataset.symbol){
+    first.classList.add("matched");
+    second.classList.add("matched");
+    first=null;
+    second=null;
+
+    if(document.querySelectorAll(".matched").length===cards.length){
+      setTimeout(()=>alert("Fall gelöst! 🕵️‍♂️
+Du hast "+moves+" Züge gebraucht."),200);
+    }
+  }else{
+    locked=true;
+    setTimeout(()=>{
+      first.classList.remove("flipped");
+      second.classList.remove("flipped");
+      first.textContent="❓";
+      second.textContent="❓";
+      first=null;
+      second=null;
+      locked=false;
+    },700);
+  }
+}
+
+document.getElementById("restart").onclick=start;
+start();
+</script>
+</body>
+</html>const fox={x:150,y:0,size:28,vy:0,onGround:true,coyote:0};
 const gravity=.7, jump=-12.5;
 
 function saveBest(){
