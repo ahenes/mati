@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mystery Memory Quiz</title>
+<title>Die drei ??? Kids – Detektiv-Memory</title>
 <style>
 body{font-family:Arial,sans-serif;text-align:center;background:#eee;margin:0;padding:20px}
 h1{margin:10px}
@@ -21,15 +21,15 @@ button#restart{padding:10px 20px;font-size:16px;cursor:pointer}
 </head>
 <body>
 
-<h1>🔎 Mystery Memory</h1>
-<p>Pairs: <span id="pairs">0</span>/12 &nbsp; | &nbsp; Moves: <span id="moves">0</span></p>
+<h1>🔎 Detektiv-Memory</h1>
+<p>Paare: <span id="pairs">0</span>/12 &nbsp; | &nbsp; Züge: <span id="moves">0</span></p>
 
 <div id="game"></div>
-<button id="restart">Restart</button>
+<button id="restart">Neues Spiel</button>
 
 <div id="quiz">
   <div id="quizBox">
-    <h2>🕵️ Case Question</h2>
+    <h2>🕵️ Detektiv-Frage</h2>
     <p id="question"></p>
     <div id="answers"></div>
     <p id="quizMessage"></p>
@@ -43,18 +43,18 @@ const symbols=[
 ];
 
 const questions=[
- {q:"Which tool is most useful for looking for tiny clues?",a:["Magnifying glass","Hammer","Umbrella"],correct:0},
- {q:"What do detectives usually look for at a mystery scene?",a:["Clues","Sandwiches","Sunglasses"],correct:0},
- {q:"Which item can help you find your direction?",a:["Compass","Pillow","Cup"],correct:0},
- {q:"What should a good detective do with an important clue?",a:["Remember it","Throw it away","Hide it"],correct:0},
- {q:"Which object is normally used to open a lock?",a:["Key","Spoon","Book"],correct:0},
- {q:"What is a mystery that has been solved?",a:["A case","A cloud","A bicycle"],correct:0},
- {q:"Which one could help document evidence?",a:["Camera","Fork","Balloon"],correct:0},
- {q:"What does a map help you find?",a:["Locations","Recipes","Songs"],correct:0},
- {q:"What should you do when you discover an interesting clue?",a:["Investigate it","Ignore it","Eat it"],correct:0},
- {q:"Which object is best for listening secretly from a distance?",a:["Headphones","Plate","Boot"],correct:0},
- {q:"What do detectives use to connect pieces of information?",a:["Reasoning","Guessing blindly","Sleeping"],correct:0},
- {q:"What is the main goal of solving a mystery?",a:["Find out what happened","Make more mystery","Lose the clues"],correct:0}
+ {q:"Womit kann man kleine Spuren am besten suchen?",a:["Lupe","Hammer","Regenschirm"],correct:0},
+ {q:"Was suchen Detektive an einem Tatort?",a:["Spuren","Sandwiches","Sonnenbrillen"],correct:0},
+ {q:"Welcher Gegenstand hilft dir, die Richtung zu finden?",a:["Kompass","Kissen","Tasse"],correct:0},
+ {q:"Was macht ein guter Detektiv mit einer wichtigen Spur?",a:["Sie merkt sie sich","Sie wirft sie weg","Sie versteckt sie"],correct:0},
+ {q:"Was benutzt man normalerweise, um ein Schloss zu öffnen?",a:["Schlüssel","Löffel","Buch"],correct:0},
+ {q:"Wie nennt man einen gelösten Fall?",a:["Einen gelösten Fall","Eine Wolke","Ein Fahrrad"],correct:0},
+ {q:"Womit kann man eine Spur fotografieren?",a:["Kamera","Gabel","Luftballon"],correct:0},
+ {q:"Was kann dir eine Karte zeigen?",a:["Orte","Rezepte","Lieder"],correct:0},
+ {q:"Was solltest du tun, wenn du eine interessante Spur findest?",a:["Sie untersuchen","Sie ignorieren","Sie essen"],correct:0},
+ {q:"Was eignet sich zum Hören aus der Entfernung?",a:["Kopfhörer","Teller","Stiefel"],correct:0},
+ {q:"Was hilft Detektiven, Informationen zu verbinden?",a:["Nachdenken","Blind raten","Schlafen"],correct:0},
+ {q:"Was ist das Ziel beim Lösen eines Rätsels?",a:["Herausfinden, was passiert ist","Noch mehr Rätsel machen","Die Spuren verlieren"],correct:0}
 ];
 
 let cards=[];
@@ -167,19 +167,19 @@ function showQuiz(){
 
 function answerQuestion(selected,correct){
   if(selected===correct){
-    quizMessage.textContent="✓ Correct! Continue the investigation.";
+    quizMessage.textContent="✓ Richtig! Weiter geht die Detektivarbeit!";
     setTimeout(()=>{
       quiz.style.display="none";
       waiting=false;
 
       if(pairs===symbols.length){
         setTimeout(()=>{
-          alert("🎉 Case solved! You found all 12 pairs in "+moves+" moves.");
+          alert("🎉 Fall gelöst! Du hast alle 12 Paare gefunden und "+moves+" Züge gebraucht.");
         },100);
       }
     },500);
   }else{
-    quizMessage.textContent="✗ Not quite. Try again!";
+    quizMessage.textContent="✗ Leider falsch. Versuch es noch einmal!";
   }
 }
 
