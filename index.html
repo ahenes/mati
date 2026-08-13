@@ -1,531 +1,192 @@
-<!doctype html>
-<html lang="de">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Die drei ??? Kids – Geheimnis-Memory</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mystery Memory Quiz</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#182536;color:#fff;font-family:Arial,sans-serif;text-align:center}
-h1{margin:20px 10px 5px;font-size:28px}
-p{margin:5px 10px 18px;color:#cbd5e1}
-#game{width:min(92vw,620px);margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.card{aspect-ratio:1;border:0;border-radius:12px;background:#d9a62e;cursor:pointer;font-size:38px;box-shadow:0 4px 0 #98731e}
-.card.flipped,.card.matched{background:#fff}
-.card.matched{box-shadow:0 4px 0 #4f7d52}
-#status{margin:18px;font-weight:bold}
-button#restart{padding:10px 18px;border:0;border-radius:8px;font-weight:bold;cursor:pointer}
+body{font-family:Arial,sans-serif;text-align:center;background:#eee;margin:0;padding:20px}
+h1{margin:10px}
+#game{width:500px;max-width:95vw;margin:20px auto;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.card{height:75px;font-size:28px;cursor:pointer;border:2px solid #333;border-radius:8px;background:#333;color:#fff}
+.card.open,.card.matched{background:#fff;color:#111}
+.card.matched{cursor:default}
+#quiz{display:none;position:fixed;inset:0;background:#0008;align-items:center;justify-content:center;padding:20px}
+#quizBox{background:#fff;color:#111;padding:25px;border-radius:12px;width:420px;max-width:90vw}
+.answer{display:block;width:100%;margin:8px 0;padding:12px;border:1px solid #888;border-radius:7px;background:#f5f5f5;cursor:pointer;font-size:16px}
+.answer:hover{background:#ddd}
+#quizMessage{font-weight:bold;min-height:20px}
+button#restart{padding:10px 20px;font-size:16px;cursor:pointer}
 </style>
 </head>
 <body>
 
-<h1>🔎 Die drei ??? Kids</h1>
-<p>Geheimnis-Memory</p>
-<div id="status">Züge: 0</div>
+<h1>🔎 Mystery Memory</h1>
+<p>Pairs: <span id="pairs">0</span>/12 &nbsp; | &nbsp; Moves: <span id="moves">0</span></p>
+
 <div id="game"></div>
-<button id="restart">Neues Spiel</button>
+<button id="restart">Restart</button>
+
+<div id="quiz">
+  <div id="quizBox">
+    <h2>🕵️ Case Question</h2>
+    <p id="question"></p>
+    <div id="answers"></div>
+    <p id="quizMessage"></p>
+  </div>
+</div>
 
 <script>
-const symbols=["🔎","🔎","🔦","🔦","🗝️","🗝️","🧭","🧭","🕵️","🕵️","📜","📜"];
+const symbols=[
+"🔎","🔦","🗝️","🧭","📜","⭐",
+"🕵️","🧩","🔐","📷","🗺️","🎧"
+];
+
+const questions=[
+ {q:"Which tool is most useful for looking for tiny clues?",a:["Magnifying glass","Hammer","Umbrella"],correct:0},
+ {q:"What do detectives usually look for at a mystery scene?",a:["Clues","Sandwiches","Sunglasses"],correct:0},
+ {q:"Which item can help you find your direction?",a:["Compass","Pillow","Cup"],correct:0},
+ {q:"What should a good detective do with an important clue?",a:["Remember it","Throw it away","Hide it"],correct:0},
+ {q:"Which object is normally used to open a lock?",a:["Key","Spoon","Book"],correct:0},
+ {q:"What is a mystery that has been solved?",a:["A case","A cloud","A bicycle"],correct:0},
+ {q:"Which one could help document evidence?",a:["Camera","Fork","Balloon"],correct:0},
+ {q:"What does a map help you find?",a:["Locations","Recipes","Songs"],correct:0},
+ {q:"What should you do when you discover an interesting clue?",a:["Investigate it","Ignore it","Eat it"],correct:0},
+ {q:"Which object is best for listening secretly from a distance?",a:["Headphones","Plate","Boot"],correct:0},
+ {q:"What do detectives use to connect pieces of information?",a:["Reasoning","Guessing blindly","Sleeping"],correct:0},
+ {q:"What is the main goal of solving a mystery?",a:["Find out what happened","Make more mystery","Lose the clues"],correct:0}
+];
+
 let cards=[];
 let first=null;
 let second=null;
-let locked=false;
+let waiting=false;
 let moves=0;
+let pairs=0;
+let questionIndex=0;
 
 const game=document.getElementById("game");
-const status=document.getElementById("status");
+const movesText=document.getElementById("moves");
+const pairsText=document.getElementById("pairs");
+const quiz=document.getElementById("quiz");
+const question=document.getElementById("question");
+const answers=document.getElementById("answers");
+const quizMessage=document.getElementById("quizMessage");
 
-function shuffle(a){
-  for(let i=a.length-1;i>0;i--){
+function shuffle(array){
+  for(let i=array.length-1;i>0;i--){
     const j=Math.floor(Math.random()*(i+1));
-    [a[i],a[j]]=[a[j],a[i]];
+    [array[i],array[j]]=[array[j],array[i]];
   }
 }
 
-function start(){
-  cards=[...symbols];
-  shuffle(cards);
+function newGame(){
+  game.innerHTML="";
   first=null;
   second=null;
-  locked=false;
+  waiting=false;
   moves=0;
-  status.textContent="Züge: 0";
-  game.innerHTML="";
+  pairs=0;
+  questionIndex=0;
+  quiz.style.display="none";
+  movesText.textContent="0";
+  pairsText.textContent="0";
 
-  cards.forEach((symbol,i)=>{
-    const button=document.createElement("button");
-    button.className="card";
-    button.textContent="❓";
-    button.dataset.symbol=symbol;
-    button.onclick=()=>flip(button);
-    game.appendChild(button);
+  cards=[...symbols,...symbols];
+  shuffle(cards);
+
+  cards.forEach(symbol=>{
+    const card=document.createElement("button");
+    card.className="card";
+    card.textContent="?";
+    card.dataset.symbol=symbol;
+    card.onclick=()=>flip(card);
+    game.appendChild(card);
   });
 }
 
 function flip(card){
-  if(locked||card.classList.contains("flipped")||card.classList.contains("matched"))return;
+  if(waiting)return;
+  if(card.classList.contains("open"))return;
+  if(card.classList.contains("matched"))return;
 
-  card.classList.add("flipped");
+  card.classList.add("open");
   card.textContent=card.dataset.symbol;
 
-  if(!first){
+  if(first===null){
     first=card;
     return;
   }
 
   second=card;
   moves++;
-  status.textContent="Züge: "+moves;
+  movesText.textContent=moves;
 
   if(first.dataset.symbol===second.dataset.symbol){
     first.classList.add("matched");
     second.classList.add("matched");
     first=null;
     second=null;
+    pairs++;
+    pairsText.textContent=pairs;
 
-    if(document.querySelectorAll(".matched").length===cards.length){
-      setTimeout(()=>alert("Fall gelöst! 🕵️‍♂️
-Du hast "+moves+" Züge gebraucht."),200);
-    }
+    waiting=true;
+    setTimeout(showQuiz,300);
   }else{
-    locked=true;
+    waiting=true;
     setTimeout(()=>{
-      first.classList.remove("flipped");
-      second.classList.remove("flipped");
-      first.textContent="❓";
-      second.textContent="❓";
+      first.classList.remove("open");
+      second.classList.remove("open");
+      first.textContent="?";
+      second.textContent="?";
       first=null;
       second=null;
-      locked=false;
+      waiting=false;
     },700);
   }
 }
 
-document.getElementById("restart").onclick=start;
-start();
+function showQuiz(){
+  const item=questions[questionIndex%questions.length];
+  questionIndex++;
+
+  question.textContent=item.q;
+  answers.innerHTML="";
+  quizMessage.textContent="";
+
+  item.a.forEach((answer,index)=>{
+    const button=document.createElement("button");
+    button.className="answer";
+    button.textContent=answer;
+    button.onclick=()=>answerQuestion(index,item.correct);
+    answers.appendChild(button);
+  });
+
+  quiz.style.display="flex";
+}
+
+function answerQuestion(selected,correct){
+  if(selected===correct){
+    quizMessage.textContent="✓ Correct! Continue the investigation.";
+    setTimeout(()=>{
+      quiz.style.display="none";
+      waiting=false;
+
+      if(pairs===symbols.length){
+        setTimeout(()=>{
+          alert("🎉 Case solved! You found all 12 pairs in "+moves+" moves.");
+        },100);
+      }
+    },500);
+  }else{
+    quizMessage.textContent="✗ Not quite. Try again!";
+  }
+}
+
+document.getElementById("restart").onclick=newGame;
+
+newGame();
 </script>
-</body>
-</html>const fox={x:150,y:0,size:28,vy:0,onGround:true,coyote:0};
-const gravity=.7, jump=-12.5;
 
-function saveBest(){
-  try{localStorage.setItem("foxBest",best)}catch(e){}
-}
-function reset(){
-  score=0; distance=0; speed=5; combo=0; comboTimer=0; shake=0;
-  fox.x=150; fox.y=300; fox.vy=0; fox.onGround=true; fox.coyote=0;
-  coins=[]; obstacles=[]; particles=[];
-  spawnCoin(700); spawnCoin(1000); spawnCoin(1300); spawnCoin(1580);
-  spawnObstacle(900); spawnObstacle(1450);
-}
-function spawnCoin(px){
-  coins.push({x:px,y:205+Math.random()*65,r:10,bob:Math.random()*6.28,got:false});
-}
-function spawnObstacle(px){
-  obstacles.push({x:px,y:c.height*.68-10,w:25+Math.random()*15,h:28+Math.random()*18});
-}
-function burst(px,py,n=10){
-  for(let i=0;i<n;i++){
-    const a=Math.random()*Math.PI*2,s=1+Math.random()*4;
-    particles.push({x:px,y:py,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2,life:25+Math.random()*20});
-  }
-}
-function jump(){
-  if(fox.onGround||fox.coyote>0){
-    fox.vy=jump;
-    fox.onGround=false;
-    fox.coyote=0;
-    burst(fox.x,fox.y+25,6);
-  }
-}
-
-addEventListener("keydown",e=>{
-  if(["Space","ArrowLeft","ArrowRight","ArrowUp"].includes(e.code))e.preventDefault();
-  keys[e.code]=true;
-  if(e.code==="Space"&&!e.repeat)jump();
-  if(!playing && (e.code==="Space"||e.code==="Enter")){
-    reset();playing=true;start.style.display="none";
-  }
-});
-addEventListener("keyup",e=>keys[e.code]=false);
-document.querySelector("#play").onclick=()=>{
-  reset();playing=true;start.style.display="none";
-};
-
-function update(){
-  if(!playing)return;
-
-  // Arrow keys give the fox limited control over its position while the world scrolls.
-  if(keys.ArrowLeft)fox.x-=3.5;
-  if(keys.ArrowRight)fox.x+=3.5;
-  fox.x=Math.max(70,Math.min(300,fox.x));
-
-  if(keys.ArrowUp&&!jumpHeld){jump();jumpHeld=true}
-  if(!keys.ArrowUp)jumpHeld=false;
-
-  if(!fox.onGround)fox.coyote=Math.max(0,fox.coyote-1);
-  fox.vy+=gravity;
-  fox.y+=fox.vy;
-
-  const ground=c.height*.68-25;
-  if(fox.y>=ground){
-    if(!fox.onGround)burst(fox.x,ground+25,4);
-    fox.y=ground;fox.vy=0;fox.onGround=true;fox.coyote=6;
-  }else if(fox.onGround){
-    fox.onGround=false;fox.coyote=6;
-  }
-
-  distance+=speed;
-  speed=Math.min(9.5,5+distance/7000);
-
-  for(const coin of coins){
-    coin.x-=speed;coin.bob+=.08;
-    const cy=coin.y+Math.sin(coin.bob)*7;
-    if(!coin.got&&Math.hypot(fox.x-coin.x,fox.y-cy)<fox.size+coin.r){
-      coin.got=true;
-      const now=performance.now();
-      comboTimer=120;
-      combo++;
-      const gain=Math.min(1+Math.floor(combo/5),5);
-      score+=gain;
-      scoreEl.textContent=score;
-      burst(coin.x,cy,14);
-    }
-  }
-  coins=coins.filter(o=>o.x>-40&&!o.got);
-
-  for(const o of obstacles){
-    o.x-=speed;
-    if(fox.x+18>o.x&&fox.x-18<o.x+o.w&&fox.y+20>o.y-o.h){
-      playing=false;
-      if(score>best){best=score;saveBest()}
-      start.querySelector("h1").textContent="💥 Ouch!";
-      start.querySelector("p").textContent=`Score: ${score}  •  Best: ${best}  •  Coins get faster!`;
-      start.querySelector("button").textContent="RUN AGAIN";
-      start.style.display="grid";
-      burst(fox.x,fox.y,25);
-    }
-  }
-  obstacles=obstacles.filter(o=>o.x>-60);
-
-  const lastCoin=coins[coins.length-1];
-  if(!lastCoin||lastCoin.x<850)spawnCoin(Math.max(850,lastCoin?lastCoin.x+260+Math.random()*230:850));
-  const lastObs=obstacles[obstacles.length-1];
-  if(!lastObs||lastObs.x<900)spawnObstacle(Math.max(950,lastObs?lastObs.x+420+Math.random()*350:950));
-
-  for(const p of particles){p.x+=p.vx;p.y+=p.vy;p.vy+=.15;p.life--}
-  particles=particles.filter(p=>p.life>0);
-
-  if(comboTimer>0)comboTimer--; else combo=0;
-}
-
-function draw(){
-  x.save();
-  if(shake>0){x.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);shake*=.9}
-
-  x.clearRect(-20,-20,c.width+40,c.height+40);
-
-  // sky
-  const sky=x.createLinearGradient(0,0,0,c.height);
-  sky.addColorStop(0,"#74c8ff");sky.addColorStop(.7,"#c8ecff");sky.addColorStop(1,"#ffd27a");
-  x.fillStyle=sky;x.fillRect(0,0,c.width,c.height);
-
-  // sun
-  x.fillStyle="#ffe88a";x.beginPath();x.arc(650,90,42,0,Math.PI*2);x.fill();
-
-  // distant hills
-  x.fillStyle="#8fc66a";
-  for(let i=-1;i<6;i++){
-    const hx=i*190-((distance*.15)%190);
-    x.beginPath();x.arc(hx,310,125,Math.PI,0);x.fill();
-  }
-
-  // clouds
-  x.fillStyle="#fff9";
-  for(let i=0;i<4;i++){
-    const cx=((i*250-distance*.04)%950)-80,cy=65+i%2*50;
-    x.beginPath();x.arc(cx,cy,22,0,Math.PI*2);x.arc(cx+28,cy-8,28,0,Math.PI*2);x.arc(cx+60,cy,20,0,Math.PI*2);x.fill();
-  }
-
-  // ground
-  const gy=c.height*.68;
-  x.fillStyle="#68ad43";x.fillRect(0,gy,c.width,c.height-gy);
-  x.fillStyle="#4e8d32";x.fillRect(0,gy,c.width,6);
-
-  // little ground streaks
-  x.fillStyle="#82c653";
-  for(let i=0;i<20;i++){
-    const gx=((i*70-distance)%850)-20;
-    x.fillRect(gx,gy+22+(i%3)*20,28,3);
-  }
-
-  // coins
-  for(const coin of coins){
-    const cy=coin.y+Math.sin(coin.bob)*7;
-    x.fillStyle="#0002";x.beginPath();x.arc(coin.x+3,cy+4,11,0,Math.PI*2);x.fill();
-    x.fillStyle="#ffd21f";x.beginPath();x.arc(coin.x,cy,coin.r,0,Math.PI*2);x.fill();
-    x.strokeStyle="#b8860b";x.lineWidth=3;x.stroke();
-    x.fillStyle="#fff3a3";x.beginPath();x.arc(coin.x-3,cy-3,3,0,Math.PI*2);x.fill();
-  }
-
-  // obstacles
-  for(const o of obstacles){
-    x.fillStyle="#6e4a32";
-    x.fillRect(o.x,o.y-o.h,o.w,o.h);
-    x.fillStyle="#4f3525";
-    x.fillRect(o.x+5,o.y-o.h+6,5,o.h-6);
-    x.fillStyle="#80bd43";
-    x.fillRect(o.x-3,o.y-o.h,o.w+6,7);
-  }
-
-  // fox shadow
-  x.fillStyle="#0002";x.beginPath();x.ellipse(fox.x,gy-2,27,7,0,0,Math.PI*2);x.fill();
-
-  // fox
-  x.fillStyle="#e87522";x.beginPath();x.arc(fox.x,fox.y,fox.size,0,Math.PI*2);x.fill();
-  // tail
-  x.beginPath();x.arc(fox.x-30,fox.y+10,19,0,Math.PI*2);x.fill();
-  x.fillStyle="#fff1dc";x.beginPath();x.arc(fox.x-43,fox.y+3,9,0,Math.PI*2);x.fill();
-  // ears
-  x.fillStyle="#e87522";x.beginPath();
-  x.moveTo(fox.x-22,fox.y-18);x.lineTo(fox.x-15,fox.y-40);x.lineTo(fox.x-2,fox.y-23);
-  x.moveTo(fox.x+2,fox.y-23);x.lineTo(fox.x+15,fox.y-40);x.lineTo(fox.x+22,fox.y-18);x.fill();
-  // muzzle
-  x.fillStyle="#fff1dc";x.beginPath();x.arc(fox.x+9,fox.y+8,13,0,Math.PI*2);x.fill();
-  // eyes/nose
-  x.fillStyle="#222";x.beginPath();x.arc(fox.x+5,fox.y-5,3,0,Math.PI*2);x.arc(fox.x+18,fox.y-5,3,0,Math.PI*2);x.fill();
-  x.beginPath();x.arc(fox.x+20,fox.y+8,3,0,Math.PI*2);x.fill();
-
-  // particles
-  for(const p of particles){
-    x.globalAlpha=Math.max(0,p.life/35);
-    x.fillStyle="#ffd21f";x.fillRect(p.x,p.y,4,4);
-  }
-  x.globalAlpha=1;
-
-  // HUD
-  x.fillStyle="#0008";x.roundRect(12,12,190,62,12);x.fill();
-  x.fillStyle="white";x.font="bold 18px Arial";
-  x.fillText("🪙 "+score,26,38);
-  x.font="13px Arial";x.fillText(combo>1?"COMBO ×"+combo:"Catch the coins!",26,60);
-
-  x.restore();
-}
-
-function loop(){update();draw();requestAnimationFrame(loop)}
-loop();
-</script>
-</body>
-</html>const fox={x:150,y:0,size:28,vy:0,onGround:true,coyote:0};
-const gravity=.7, jump=-12.5;
-
-function saveBest(){
-  try{localStorage.setItem("foxBest",best)}catch(e){}
-}
-function reset(){
-  score=0; distance=0; speed=5; combo=0; comboTimer=0; shake=0;
-  fox.x=150; fox.y=300; fox.vy=0; fox.onGround=true; fox.coyote=0;
-  coins=[]; obstacles=[]; particles=[];
-  spawnCoin(700); spawnCoin(1000); spawnCoin(1300); spawnCoin(1580);
-  spawnObstacle(900); spawnObstacle(1450);
-}
-function spawnCoin(px){
-  coins.push({x:px,y:205+Math.random()*65,r:10,bob:Math.random()*6.28,got:false});
-}
-function spawnObstacle(px){
-  obstacles.push({x:px,y:c.height*.68-10,w:25+Math.random()*15,h:28+Math.random()*18});
-}
-function burst(px,py,n=10){
-  for(let i=0;i<n;i++){
-    const a=Math.random()*Math.PI*2,s=1+Math.random()*4;
-    particles.push({x:px,y:py,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2,life:25+Math.random()*20});
-  }
-}
-function jump(){
-  if(fox.onGround||fox.coyote>0){
-    fox.vy=jump;
-    fox.onGround=false;
-    fox.coyote=0;
-    burst(fox.x,fox.y+25,6);
-  }
-}
-
-addEventListener("keydown",e=>{
-  if(["Space","ArrowLeft","ArrowRight","ArrowUp"].includes(e.code))e.preventDefault();
-  keys[e.code]=true;
-  if(e.code==="Space"&&!e.repeat)jump();
-  if(!playing && (e.code==="Space"||e.code==="Enter")){
-    reset();playing=true;start.style.display="none";
-  }
-});
-addEventListener("keyup",e=>keys[e.code]=false);
-document.querySelector("#play").onclick=()=>{
-  reset();playing=true;start.style.display="none";
-};
-
-function update(){
-  if(!playing)return;
-
-  // Arrow keys give the fox limited control over its position while the world scrolls.
-  if(keys.ArrowLeft)fox.x-=3.5;
-  if(keys.ArrowRight)fox.x+=3.5;
-  fox.x=Math.max(70,Math.min(300,fox.x));
-
-  if(keys.ArrowUp&&!jumpHeld){jump();jumpHeld=true}
-  if(!keys.ArrowUp)jumpHeld=false;
-
-  if(!fox.onGround)fox.coyote=Math.max(0,fox.coyote-1);
-  fox.vy+=gravity;
-  fox.y+=fox.vy;
-
-  const ground=c.height*.68-25;
-  if(fox.y>=ground){
-    if(!fox.onGround)burst(fox.x,ground+25,4);
-    fox.y=ground;fox.vy=0;fox.onGround=true;fox.coyote=6;
-  }else if(fox.onGround){
-    fox.onGround=false;fox.coyote=6;
-  }
-
-  distance+=speed;
-  speed=Math.min(9.5,5+distance/7000);
-
-  for(const coin of coins){
-    coin.x-=speed;coin.bob+=.08;
-    const cy=coin.y+Math.sin(coin.bob)*7;
-    if(!coin.got&&Math.hypot(fox.x-coin.x,fox.y-cy)<fox.size+coin.r){
-      coin.got=true;
-      const now=performance.now();
-      comboTimer=120;
-      combo++;
-      const gain=Math.min(1+Math.floor(combo/5),5);
-      score+=gain;
-      scoreEl.textContent=score;
-      burst(coin.x,cy,14);
-    }
-  }
-  coins=coins.filter(o=>o.x>-40&&!o.got);
-
-  for(const o of obstacles){
-    o.x-=speed;
-    if(fox.x+18>o.x&&fox.x-18<o.x+o.w&&fox.y+20>o.y-o.h){
-      playing=false;
-      if(score>best){best=score;saveBest()}
-      start.querySelector("h1").textContent="💥 Ouch!";
-      start.querySelector("p").textContent=`Score: ${score}  •  Best: ${best}  •  Coins get faster!`;
-      start.querySelector("button").textContent="RUN AGAIN";
-      start.style.display="grid";
-      burst(fox.x,fox.y,25);
-    }
-  }
-  obstacles=obstacles.filter(o=>o.x>-60);
-
-  const lastCoin=coins[coins.length-1];
-  if(!lastCoin||lastCoin.x<850)spawnCoin(Math.max(850,lastCoin?lastCoin.x+260+Math.random()*230:850));
-  const lastObs=obstacles[obstacles.length-1];
-  if(!lastObs||lastObs.x<900)spawnObstacle(Math.max(950,lastObs?lastObs.x+420+Math.random()*350:950));
-
-  for(const p of particles){p.x+=p.vx;p.y+=p.vy;p.vy+=.15;p.life--}
-  particles=particles.filter(p=>p.life>0);
-
-  if(comboTimer>0)comboTimer--; else combo=0;
-}
-
-function draw(){
-  x.save();
-  if(shake>0){x.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);shake*=.9}
-
-  x.clearRect(-20,-20,c.width+40,c.height+40);
-
-  // sky
-  const sky=x.createLinearGradient(0,0,0,c.height);
-  sky.addColorStop(0,"#74c8ff");sky.addColorStop(.7,"#c8ecff");sky.addColorStop(1,"#ffd27a");
-  x.fillStyle=sky;x.fillRect(0,0,c.width,c.height);
-
-  // sun
-  x.fillStyle="#ffe88a";x.beginPath();x.arc(650,90,42,0,Math.PI*2);x.fill();
-
-  // distant hills
-  x.fillStyle="#8fc66a";
-  for(let i=-1;i<6;i++){
-    const hx=i*190-((distance*.15)%190);
-    x.beginPath();x.arc(hx,310,125,Math.PI,0);x.fill();
-  }
-
-  // clouds
-  x.fillStyle="#fff9";
-  for(let i=0;i<4;i++){
-    const cx=((i*250-distance*.04)%950)-80,cy=65+i%2*50;
-    x.beginPath();x.arc(cx,cy,22,0,Math.PI*2);x.arc(cx+28,cy-8,28,0,Math.PI*2);x.arc(cx+60,cy,20,0,Math.PI*2);x.fill();
-  }
-
-  // ground
-  const gy=c.height*.68;
-  x.fillStyle="#68ad43";x.fillRect(0,gy,c.width,c.height-gy);
-  x.fillStyle="#4e8d32";x.fillRect(0,gy,c.width,6);
-
-  // little ground streaks
-  x.fillStyle="#82c653";
-  for(let i=0;i<20;i++){
-    const gx=((i*70-distance)%850)-20;
-    x.fillRect(gx,gy+22+(i%3)*20,28,3);
-  }
-
-  // coins
-  for(const coin of coins){
-    const cy=coin.y+Math.sin(coin.bob)*7;
-    x.fillStyle="#0002";x.beginPath();x.arc(coin.x+3,cy+4,11,0,Math.PI*2);x.fill();
-    x.fillStyle="#ffd21f";x.beginPath();x.arc(coin.x,cy,coin.r,0,Math.PI*2);x.fill();
-    x.strokeStyle="#b8860b";x.lineWidth=3;x.stroke();
-    x.fillStyle="#fff3a3";x.beginPath();x.arc(coin.x-3,cy-3,3,0,Math.PI*2);x.fill();
-  }
-
-  // obstacles
-  for(const o of obstacles){
-    x.fillStyle="#6e4a32";
-    x.fillRect(o.x,o.y-o.h,o.w,o.h);
-    x.fillStyle="#4f3525";
-    x.fillRect(o.x+5,o.y-o.h+6,5,o.h-6);
-    x.fillStyle="#80bd43";
-    x.fillRect(o.x-3,o.y-o.h,o.w+6,7);
-  }
-
-  // fox shadow
-  x.fillStyle="#0002";x.beginPath();x.ellipse(fox.x,gy-2,27,7,0,0,Math.PI*2);x.fill();
-
-  // fox
-  x.fillStyle="#e87522";x.beginPath();x.arc(fox.x,fox.y,fox.size,0,Math.PI*2);x.fill();
-  // tail
-  x.beginPath();x.arc(fox.x-30,fox.y+10,19,0,Math.PI*2);x.fill();
-  x.fillStyle="#fff1dc";x.beginPath();x.arc(fox.x-43,fox.y+3,9,0,Math.PI*2);x.fill();
-  // ears
-  x.fillStyle="#e87522";x.beginPath();
-  x.moveTo(fox.x-22,fox.y-18);x.lineTo(fox.x-15,fox.y-40);x.lineTo(fox.x-2,fox.y-23);
-  x.moveTo(fox.x+2,fox.y-23);x.lineTo(fox.x+15,fox.y-40);x.lineTo(fox.x+22,fox.y-18);x.fill();
-  // muzzle
-  x.fillStyle="#fff1dc";x.beginPath();x.arc(fox.x+9,fox.y+8,13,0,Math.PI*2);x.fill();
-  // eyes/nose
-  x.fillStyle="#222";x.beginPath();x.arc(fox.x+5,fox.y-5,3,0,Math.PI*2);x.arc(fox.x+18,fox.y-5,3,0,Math.PI*2);x.fill();
-  x.beginPath();x.arc(fox.x+20,fox.y+8,3,0,Math.PI*2);x.fill();
-
-  // particles
-  for(const p of particles){
-    x.globalAlpha=Math.max(0,p.life/35);
-    x.fillStyle="#ffd21f";x.fillRect(p.x,p.y,4,4);
-  }
-  x.globalAlpha=1;
-
-  // HUD
-  x.fillStyle="#0008";x.roundRect(12,12,190,62,12);x.fill();
-  x.fillStyle="white";x.font="bold 18px Arial";
-  x.fillText("🪙 "+score,26,38);
-  x.font="13px Arial";x.fillText(combo>1?"COMBO ×"+combo:"Catch the coins!",26,60);
-
-  x.restore();
-}
-
-function loop(){update();draw();requestAnimationFrame(loop)}
-loop();
-</script>
 </body>
 </html>
